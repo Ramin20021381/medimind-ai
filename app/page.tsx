@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Settings,
   MessageCircle,
+  Radio,
 } from "lucide-react";
 
 const features = [
@@ -69,6 +70,153 @@ const workspaceLinks = [
     href: "/settings",
   },
 ];
+
+function ECGAnimation() {
+  const waveform =
+    "M 0 55 L 55 55 L 68 55 L 78 48 L 87 65 L 101 10 L 116 94 L 130 55 L 145 55 L 200 55 L 255 55 L 268 55 L 278 48 L 287 65 L 301 10 L 316 94 L 330 55 L 345 55 L 400 55 L 455 55 L 468 55 L 478 48 L 487 65 L 501 10 L 516 94 L 530 55 L 545 55 L 600 55";
+
+  return (
+    <div className="relative mb-5 overflow-hidden rounded-3xl border border-teal-400/20 bg-[#0d1928] p-5 md:p-6">
+      <style>{`
+        @keyframes ecg-scroll {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-600px);
+          }
+        }
+
+        @keyframes ecg-pulse {
+          0%, 100% {
+            opacity: 0.55;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+
+        .ecg-track {
+          animation: ecg-scroll 5s linear infinite;
+          will-change: transform;
+        }
+
+        .ecg-glow {
+          animation: ecg-pulse 2s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ecg-track,
+          .ecg-glow {
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-teal-400/10 p-2.5">
+            <Activity className="h-5 w-5 text-teal-400" />
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Heartbeat Visualization
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              ECG-inspired animation
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-full border border-teal-400/20 bg-teal-400/5 px-3 py-1.5">
+          <span className="ecg-glow h-2 w-2 rounded-full bg-teal-400" />
+          <span className="text-xs font-medium text-teal-300">
+            ACTIVE
+          </span>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#080f1c] px-2 py-4">
+        <div className="pointer-events-none absolute inset-0 opacity-20">
+          <svg
+            viewBox="0 0 600 110"
+            preserveAspectRatio="none"
+            className="h-full w-full"
+          >
+            {Array.from({ length: 13 }).map((_, index) => (
+              <line
+                key={`vertical-${index}`}
+                x1={index * 50}
+                y1="0"
+                x2={index * 50}
+                y2="110"
+                stroke="#64748b"
+                strokeWidth="0.5"
+              />
+            ))}
+
+            {Array.from({ length: 5 }).map((_, index) => (
+              <line
+                key={`horizontal-${index}`}
+                x1="0"
+                y1={index * 27.5}
+                x2="600"
+                y2={index * 27.5}
+                stroke="#64748b"
+                strokeWidth="0.5"
+              />
+            ))}
+          </svg>
+        </div>
+
+        <svg
+          viewBox="0 0 600 110"
+          preserveAspectRatio="none"
+          className="relative h-24 w-full"
+          role="img"
+          aria-label="Animated ECG waveform"
+        >
+          <defs>
+            <filter id="ecg-shadow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g className="ecg-track" filter="url(#ecg-shadow)">
+            <path
+              d={waveform}
+              fill="none"
+              stroke="#14b8a6"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            <path
+              d={waveform}
+              transform="translate(600 0)"
+              fill="none"
+              stroke="#14b8a6"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        </svg>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+        <Radio className="h-3.5 w-3.5 text-teal-400" />
+        <span>Heartbeat Monitor</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -162,8 +310,11 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Preview Card */}
+        {/* Right Side */}
         <div className="relative z-10">
+          <ECGAnimation />
+
+          {/* Preview Card */}
           <div className="rounded-3xl border border-white/10 bg-[#111a2a] p-6 shadow-2xl shadow-teal-950/30">
             <div className="mb-8 flex items-center justify-between">
               <div>
@@ -331,10 +482,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer
-        id="about"
-        className="border-t border-white/5 px-6 py-8 text-center text-sm text-slate-500"
-      >
+      <footer className="border-t border-white/5 px-6 py-8 text-center text-sm text-slate-500">
         © 2026 MediMind AI. Built for responsible health information.
       </footer>
     </main>

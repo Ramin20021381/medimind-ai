@@ -7,6 +7,10 @@ import {
   ArrowRight,
   ChartNoAxesCombined,
   Stethoscope,
+  LayoutDashboard,
+  ClipboardList,
+  Settings,
+  MessageCircle,
 } from "lucide-react";
 
 const features = [
@@ -15,59 +19,104 @@ const features = [
     title: "AI Health Assistant",
     description:
       "Get clear, structured health information powered by artificial intelligence.",
+    href: "/assistant",
   },
   {
     icon: HeartPulse,
     title: "Symptom Insights",
     description:
       "Describe your symptoms and receive general health information and guidance.",
+    href: "/symptoms",
   },
   {
     icon: ChartNoAxesCombined,
     title: "Health Dashboard",
     description:
       "Keep track of your health records and view your progress through charts.",
+    href: "/dashboard",
+  },
+];
+
+const workspaceLinks = [
+  {
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    description: "Your personal health overview",
+    href: "/dashboard",
+  },
+  {
+    icon: BrainCircuit,
+    title: "AI Assistant",
+    description: "Ask general health questions",
+    href: "/assistant",
+  },
+  {
+    icon: HeartPulse,
+    title: "Symptom Journal",
+    description: "Organize your symptom information",
+    href: "/symptoms",
+  },
+  {
+    icon: ClipboardList,
+    title: "Health History",
+    description: "Review your health records",
+    href: "/history",
+  },
+  {
+    icon: Settings,
+    title: "Settings",
+    description: "Manage your account preferences",
+    href: "/settings",
   },
 ];
 
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#080d18] text-white">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <Link href="/" className="flex items-center gap-3">
+      {/* Navigation */}
+      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-6">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <div className="rounded-xl bg-teal-400/10 p-2.5">
             <Activity className="h-6 w-6 text-teal-400" />
           </div>
+
           <span className="text-xl font-bold tracking-tight">
             MediMind<span className="text-teal-400"> AI</span>
           </span>
         </Link>
 
-        <div className="hidden items-center gap-8 text-sm text-slate-400 md:flex">
+        <div className="hidden items-center gap-6 text-sm text-slate-400 lg:flex">
           <a href="#features" className="transition hover:text-white">
             Features
           </a>
-          <a href="#about" className="transition hover:text-white">
-            About
+
+          <a href="#workspace" className="transition hover:text-white">
+            Workspace
           </a>
+
+          <Link href="/about" className="transition hover:text-white">
+            About
+          </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
             href="/login"
-            className="rounded-lg px-4 py-2 text-sm text-slate-300 transition hover:text-white"
+            className="rounded-lg px-3 py-2 text-sm text-slate-300 transition hover:text-white sm:px-4"
           >
             Log in
           </Link>
+
           <Link
             href="/signup"
-            className="rounded-lg bg-teal-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-300"
+            className="rounded-lg bg-teal-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-300 sm:px-5"
           >
             Get Started
           </Link>
         </div>
       </nav>
 
+      {/* Hero */}
       <section className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 pb-28 pt-24 md:grid-cols-2 md:pt-32">
         <div className="absolute left-1/3 top-10 -z-0 h-80 w-80 rounded-full bg-teal-500/10 blur-[120px]" />
 
@@ -94,16 +143,17 @@ export default function Home() {
               href="/signup"
               className="group flex items-center gap-3 rounded-xl bg-teal-400 px-7 py-4 font-semibold text-slate-950 transition hover:bg-teal-300"
             >
-              Explore MediMind
+              Get Started
               <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
             </Link>
 
-            <a
-              href="#features"
-              className="rounded-xl border border-white/10 px-7 py-4 font-medium text-slate-300 transition hover:border-white/30 hover:text-white"
+            <Link
+              href="/assistant"
+              className="flex items-center gap-3 rounded-xl border border-white/10 px-7 py-4 font-medium text-slate-300 transition hover:border-teal-400/40 hover:text-white"
             >
-              Discover Features
-            </a>
+              <MessageCircle className="h-5 w-5 text-teal-400" />
+              Try AI Assistant
+            </Link>
           </div>
 
           <p className="mt-7 text-xs leading-6 text-slate-500">
@@ -112,13 +162,20 @@ export default function Home() {
           </p>
         </div>
 
+        {/* Preview Card */}
         <div className="relative z-10">
           <div className="rounded-3xl border border-white/10 bg-[#111a2a] p-6 shadow-2xl shadow-teal-950/30">
             <div className="mb-8 flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Your health overview</p>
-                <h2 className="mt-1 text-xl font-semibold">Welcome to MediMind</h2>
+                <p className="text-sm text-slate-400">
+                  Your health overview
+                </p>
+
+                <h2 className="mt-1 text-xl font-semibold">
+                  Welcome to MediMind
+                </h2>
               </div>
+
               <div className="rounded-xl bg-teal-400/10 p-3">
                 <HeartPulse className="h-6 w-6 text-teal-400" />
               </div>
@@ -143,6 +200,7 @@ export default function Home() {
                 <div className="rounded-lg bg-teal-400/10 p-2">
                   <Stethoscope className="h-5 w-5 text-teal-400" />
                 </div>
+
                 <div>
                   <p className="font-semibold">Health Information</p>
                   <p className="text-xs text-slate-500">
@@ -154,6 +212,7 @@ export default function Home() {
               <div className="h-2 overflow-hidden rounded-full bg-slate-700">
                 <div className="h-full w-3/4 rounded-full bg-teal-400" />
               </div>
+
               <p className="mt-3 text-xs text-slate-500">
                 Your personal health space
               </p>
@@ -167,13 +226,71 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="features" className="border-t border-white/5 bg-[#0b1220] px-6 py-24">
+      {/* Workspace Quick Access */}
+      <section
+        id="workspace"
+        className="border-y border-white/5 bg-[#0b1220] px-6 py-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-14">
+            <p className="font-semibold text-teal-400">
+              YOUR WORKSPACE
+            </p>
+
+            <h2 className="mt-4 text-3xl font-bold md:text-5xl">
+              Explore MediMind Workspace
+            </h2>
+
+            <p className="mt-5 max-w-2xl leading-7 text-slate-400">
+              Access the different areas of MediMind AI directly from here.
+              Choose a section to explore its available features.
+            </p>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {workspaceLinks.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className="group rounded-2xl border border-white/10 bg-[#111a2a] p-6 transition hover:-translate-y-1 hover:border-teal-400/40 hover:bg-[#142033]"
+                >
+                  <div className="mb-5 flex items-center justify-between">
+                    <div className="rounded-xl bg-teal-400/10 p-3">
+                      <Icon className="h-6 w-6 text-teal-400" />
+                    </div>
+
+                    <ArrowRight className="h-5 w-5 text-slate-600 transition group-hover:translate-x-1 group-hover:text-teal-400" />
+                  </div>
+
+                  <h3 className="text-lg font-semibold">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    {item.description}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="px-6 py-24">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto mb-16 max-w-2xl text-center">
-            <p className="font-semibold text-teal-400">WHAT WE OFFER</p>
+            <p className="font-semibold text-teal-400">
+              WHAT WE OFFER
+            </p>
+
             <h2 className="mt-4 text-3xl font-bold md:text-5xl">
               Your Health, Better Organized
             </h2>
+
             <p className="mt-5 leading-7 text-slate-400">
               A collection of tools designed to help you understand and
               organize your health information.
@@ -185,26 +302,35 @@ export default function Home() {
               const Icon = feature.icon;
 
               return (
-                <div
+                <Link
                   key={feature.title}
-                  className="rounded-2xl border border-white/10 bg-[#111a2a] p-8 transition hover:-translate-y-1 hover:border-teal-400/30"
+                  href={feature.href}
+                  className="group rounded-2xl border border-white/10 bg-[#111a2a] p-8 transition hover:-translate-y-1 hover:border-teal-400/30"
                 >
                   <div className="mb-6 inline-flex rounded-xl bg-teal-400/10 p-3">
                     <Icon className="h-7 w-7 text-teal-400" />
                   </div>
+
                   <h3 className="mb-3 text-xl font-semibold">
                     {feature.title}
                   </h3>
+
                   <p className="leading-7 text-slate-400">
                     {feature.description}
                   </p>
-                </div>
+
+                  <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-teal-400">
+                    Explore feature
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </div>
+                </Link>
               );
             })}
           </div>
         </div>
       </section>
 
+      {/* Footer */}
       <footer
         id="about"
         className="border-t border-white/5 px-6 py-8 text-center text-sm text-slate-500"

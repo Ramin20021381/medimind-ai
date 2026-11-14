@@ -1,6 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import {
+  loadConversations as loadSavedConversations,
+  createConversation as createSavedConversation,
+  saveMessage as saveSavedMessage,
+  updateConversation as updateSavedConversation,
+  deleteConversation as deleteSavedConversation,
+  type Conversation as SavedConversation,
+} from "@/lib/conversations";
 import { useEffect, useState } from "react";
 import {
   Activity,
@@ -33,7 +41,7 @@ type AIResponse = {
 };
 
 type Message = {
-  id: number;
+  id: string;
   role: "user" | "assistant";
   content: string;
   data?: AIResponse;
@@ -45,8 +53,6 @@ type Conversation = {
   updatedAt: number;
   messages: Message[];
 };
-
-const STORAGE_KEY = "medimind_conversations";
 
 const suggestions = [
   "What is the difference between a cold and the flu?",
@@ -64,8 +70,23 @@ export default function AssistantPage() {
 
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [savingConsent, setSavingConsent] = useState(false);
+
   const [error, setError] = useState("");
+  const [saveWarning, setSaveWarning] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const [persistedConversationIds, setPersistedConversationIds] = useState<
+    Set<string>
+  >(new Set());
+
+  const [persistedMessageIds, setPersistedMessageIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  const [deletingConversationId, setDeletingConversationId] = useState<
+    string | null
+  >(null);
 
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId
@@ -73,46 +94,86 @@ export default function AssistantPage() {
 
   const messages = activeConversation?.messages ?? [];
 
-  // Load conversations from localStorage
+  // Load conversations from Supabase
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
+    let isMounted = true;
 
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
+    async function fetchConversations() {
+      try {
+        const savedConversations = await loadSavedConversations();
 
-        if (Array.isArray(parsedData.conversations)) {
-          setConversations(parsedData.conversations);
+        const formattedConversations: Conversation[] =
+          savedConversations.map((conversation: SavedConversation) => ({
+            id: conversation.id,
+            title: conversation.title,
+            updatedAt: new Date(conversation.updated_at).getTime(),
+            messages: (conversation.messages ?? []).map((message) => {
+              let content = message.content;
+              let data: AIResponse | undefined;
+
+              if (message.role === "assistant") {
+                try {
+                  const parsed: unknown = JSON.parse(message.content);
+
+                  if (
+                    parsed !== null &&
+                    typeof parsed === "object" &&
+                    "summary" in parsed &&
+                    typeof parsed.summary === "string"
+                  ) {
+                    data = parsed as AIResponse;
+                    content = data.summary;
+                  }
+                } catch {
+                  // Keep plain text if stored content is not JSON.
+                }
+              }
+
+              return {
+                id: message.id,
+                role: message.role,
+                content,
+                data,
+              };
+            }),
+          }));
+
+        if (isMounted) {
+          setConversations(formattedConversations);
+
+          setPersistedConversationIds(
+            new Set(formattedConversations.map((conversation) => conversation.id))
+          );
+
+          setPersistedMessageIds(
+            new Set(
+              formattedConversations.flatMap((conversation) =>
+                conversation.messages.map((message) => message.id)
+              )
+            )
+          );
+
+          setActiveConversationId(formattedConversations[0]?.id ?? null);
         }
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
 
-        setActiveConversationId(
-          parsedData.activeConversationId ?? null
-        );
+        if (isMounted) {
+          setError("Unable to load your conversation history.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
       }
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-    } finally {
-      setIsLoaded(true);
     }
+
+    fetchConversations();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
-
-  // Save conversations whenever they change
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          conversations,
-          activeConversationId,
-        })
-      );
-    } catch (error) {
-      console.error("Failed to save conversations:", error);
-      setError("Unable to save conversation history in this browser.");
-    }
-  }, [conversations, activeConversationId, isLoaded]);
 
   async function handleSend(text?: string) {
     const content = (text ?? input).trim();
@@ -120,13 +181,12 @@ export default function AssistantPage() {
     if (!content || loading || !consent) return;
 
     const userMessage: Message = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       role: "user",
       content,
     };
 
-    const conversationId =
-      activeConversationId ?? crypto.randomUUID();
+    const conversationId = activeConversationId ?? crypto.randomUUID();
 
     const currentMessages = activeConversation?.messages ?? [];
 
@@ -166,6 +226,7 @@ export default function AssistantPage() {
     setInput("");
     setLoading(true);
     setError("");
+    setSaveWarning("");
 
     try {
       const response = await fetch("/api/assistant", {
@@ -190,24 +251,104 @@ export default function AssistantPage() {
         throw new Error(result.error || "Something went wrong.");
       }
 
+      if (!result.data || typeof result.data.summary !== "string") {
+        throw new Error("The AI returned an invalid response.");
+      }
+
       const assistantMessage: Message = {
-        id: Date.now() + 1,
+        id: crypto.randomUUID(),
         role: "assistant",
         content: result.data.summary,
         data: result.data,
       };
 
+      const finalMessages = [...updatedMessages, assistantMessage];
+
+      // Update the interface immediately.
       setConversations((previous) =>
         previous.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
                 updatedAt: Date.now(),
-                messages: [...conversation.messages, assistantMessage],
+                messages: finalMessages,
               }
             : conversation
         )
       );
+
+      // Save conversation only when the user explicitly agrees.
+      if (savingConsent) {
+        try {
+          let databaseConversationId = conversationId;
+
+          const isAlreadyPersisted =
+            persistedConversationIds.has(conversationId);
+
+          // Create a database conversation if this is a new chat.
+          if (!isAlreadyPersisted) {
+            const createdConversation =
+              await createSavedConversation(conversationTitle);
+
+            databaseConversationId = createdConversation.id;
+
+            setPersistedConversationIds((previous) => {
+              const next = new Set(previous);
+              next.add(databaseConversationId);
+              return next;
+            });
+
+            // Replace the temporary ID with the real database ID.
+            setConversations((previous) =>
+              previous.map((conversation) =>
+                conversation.id === conversationId
+                  ? {
+                      ...conversation,
+                      id: databaseConversationId,
+                    }
+                  : conversation
+              )
+            );
+
+            setActiveConversationId((previous) =>
+              previous === conversationId
+                ? databaseConversationId
+                : previous
+            );
+          }
+
+          // Save messages that have not already been stored.
+          for (const message of finalMessages) {
+            if (persistedMessageIds.has(message.id)) {
+              continue;
+            }
+
+            const messageContent = message.data
+              ? JSON.stringify(message.data)
+              : message.content;
+
+            await saveSavedMessage(
+              databaseConversationId,
+              message.role,
+              messageContent
+            );
+
+            setPersistedMessageIds((previous) => {
+              const next = new Set(previous);
+              next.add(message.id);
+              return next;
+            });
+          }
+
+          await updateSavedConversation(databaseConversationId);
+        } catch (saveError) {
+          console.error("Failed to save conversation:", saveError);
+
+          setSaveWarning(
+            "Your AI response was generated, but the conversation could not be saved to your history."
+          );
+        }
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error
@@ -224,31 +365,57 @@ export default function AssistantPage() {
     setActiveConversationId(null);
     setInput("");
     setConsent(false);
+    setSavingConsent(false);
     setError("");
+    setSaveWarning("");
   }
 
   function openConversation(id: string) {
     setActiveConversationId(id);
     setInput("");
     setError("");
+    setSaveWarning("");
   }
 
-  function deleteConversation(id: string) {
+  async function deleteConversation(id: string) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this conversation?"
     );
 
-    if (!confirmed) return;
+    if (!confirmed || deletingConversationId) return;
 
-    setConversations((previous) =>
-      previous.filter((conversation) => conversation.id !== id)
-    );
-
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
-    }
-
+    setDeletingConversationId(id);
     setError("");
+    setSaveWarning("");
+
+    try {
+      // Delete from Supabase only if the conversation was saved.
+      if (persistedConversationIds.has(id)) {
+        await deleteSavedConversation(id);
+      }
+
+      setConversations((previous) =>
+        previous.filter((conversation) => conversation.id !== id)
+      );
+
+      setPersistedConversationIds((previous) => {
+        const next = new Set(previous);
+        next.delete(id);
+        return next;
+      });
+
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+      }
+    } catch (deleteError) {
+      console.error("Failed to delete conversation:", deleteError);
+
+      setError(
+        "Unable to delete this conversation. Please try again."
+      );
+    } finally {
+      setDeletingConversationId(null);
+    }
   }
 
   return (
@@ -319,7 +486,6 @@ export default function AssistantPage() {
             </div>
 
             <div className="space-y-2 overflow-y-auto pr-1">
-
               {!isLoaded ? (
                 <p className="text-xs text-slate-500">
                   Loading history...
@@ -357,15 +523,19 @@ export default function AssistantPage() {
 
                       <button
                         onClick={() => deleteConversation(conversation.id)}
-                        className="shrink-0 text-slate-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+                        disabled={deletingConversationId === conversation.id}
+                        className="shrink-0 text-slate-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100 disabled:opacity-50"
                         title="Delete conversation"
                       >
-                        <Trash2 size={15} />
+                        {deletingConversationId === conversation.id ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={15} />
+                        )}
                       </button>
                     </div>
                   ))
               )}
-
             </div>
           </div>
 
@@ -545,13 +715,26 @@ export default function AssistantPage() {
                   </div>
                 </div>
               )}
+
+              {/* Save Warning */}
+              {saveWarning && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-300">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+
+                  <div>
+                    <p className="font-semibold">History not saved</p>
+                    <p className="mt-1">{saveWarning}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Input Area */}
             <div className="sticky bottom-0 border-t border-white/5 bg-[#080d18] px-5 py-5">
               <div className="mx-auto max-w-4xl">
 
-                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-[#111a2a] p-4">
+                {/* Groq Consent */}
+                <label className="mb-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-[#111a2a] p-4">
                   <input
                     type="checkbox"
                     checked={consent}
@@ -563,6 +746,22 @@ export default function AssistantPage() {
                     I understand that my message will be sent to Groq, an
                     external AI service, to generate a response. I will avoid
                     sharing identifying or unnecessary sensitive information.
+                  </span>
+                </label>
+
+                {/* History Consent */}
+                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-[#111a2a] p-4">
+                  <input
+                    type="checkbox"
+                    checked={savingConsent}
+                    onChange={(e) => setSavingConsent(e.target.checked)}
+                    className="mt-1 h-4 w-4 accent-teal-400"
+                  />
+
+                  <span className="text-xs leading-6 text-slate-400">
+                    I agree to save this conversation and its messages in my
+                    MediMind account so I can access them later. If unchecked,
+                    new messages will not be saved to my history.
                   </span>
                 </label>
 
